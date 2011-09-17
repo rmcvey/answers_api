@@ -1,4 +1,5 @@
 <?php
+
 /**
  * 	Answers API facade
  * 	@author Rob McVey
