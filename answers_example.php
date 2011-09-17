@@ -18,8 +18,8 @@ $search_response = answers_api::search('When does the bacon narwhal?');
 $page = 2;
 $limit = 5;
 $filters = array(
-	'filters' => 'answered',
-	'corpus' => 'wiki'
+    'filters' => 'answered',
+    'corpus' => 'wiki'
 );
 $paged_response = answers_api::search('Why is the sky blue?', $filters, $page, $limit);
 
