@@ -299,7 +299,7 @@ class answers_api {
 
         $xml_o = @simplexml_load_string($response);
 
-        if (property_exists('message', $xml_o)) {
+        if (property_exists($xml_o, 'message')) {
             return "Could not create question";
         } else {
             return (array) $xml_o;
