@@ -2,9 +2,9 @@
 require_once 'answers_api.php';
 
 // set api key
-answers_api::$key = 'AMSUMMIT';
-// likely replace by $_SERVER['REMOTE_ADDR']
-answers_api::$ip  = '67.196.156.93';
+answers_api::$key = 'YOUR_API_KEY';
+answers_api::$ip  = $_SERVER['REMOTE_ADDR'];
+
 // turn on curl debuggin by switching this to true
 answers_api::$debug = false;
 

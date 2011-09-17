@@ -344,6 +344,31 @@ class answers_api
 	}
 	
 	/**
+	*	Delete answers.com document
+	*	@param id <string> ID of Document
+	*	@param url <string> API URL of document
+	*	@param true on success, message on error
+	*/
+	public static function delete($id, $url)
+	{		
+		if(empty($id) || empty($url)){
+			throw new Exception("ID and URL are required to delete a document");
+		}
+		$headers = array(
+			"If-Match: $id",
+			"X-Answers-apikey:".self::$key
+		);
+		
+		$response = self::remove($url, $headers);
+		
+		if(strstr($response, "<OK/>")){
+			return true;
+		}else{
+			return $response;
+		}
+	}
+	
+	/**
 	*	Returns commonly used headers
 	*/
 	private static function get_common_headers()
@@ -352,6 +377,14 @@ class answers_api
 			"X-Answers-apikey:". self::$key,
 			"X-Answers-user-ip:". self::$ip
 		);
+	}
+	
+	/**
+	*	Perform a DELETE request
+	*/
+	public static function remove($url, $headers)
+	{
+		return self::rest('DELETE', $url, NULL, $headers);
 	}
 	
 	/**
