@@ -1,1 +1,10 @@
 Please see answers_example.php for usage
+
+Implemented methods:
+    - search(query, options=array(), page=0, limit=10): perform a search against the Answers API
+    - categorize(query): categorize a question
+    - *ask(query): ask a question
+    - *answer(url, answer): answer a question
+    - *delete(id, url): delete a question
+
+* Requires elevated permissions
