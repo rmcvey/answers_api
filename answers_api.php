@@ -3,10 +3,8 @@
 /**
  * 	Answers API facade
  * 	@author Rob McVey
- * 	@brief Sorry for all of the array casting, I've found Simple_XML object parsing to be less than desirable to work with
  */
 class answers_api {
-
     /**
      * 	@param key <string> API key
      */
@@ -52,7 +50,7 @@ class answers_api {
             $headers
         );
 
-        $xml_o = @simplexml_load_string($text_response);
+        $result = self::parse_response($text_response);
 
         $cat_count = 1;
         $response = array(
@@ -63,13 +61,12 @@ class answers_api {
             'message' => ''
         );
 
-        $categories = (array) $xml_o->categories;
-        $categories = $categories['category'];
+        $categories = $result['categories']['category'];
 
         if (is_array($categories)) {
             foreach ($categories as $key => $category) {
-                $title = (array) $category->title;
-                $response["category$cat_count"] = array_shift($title);
+                $title = $category['title'];
+                $response["category$cat_count"] = $title;
                 $cat_count++;
                 if ($cat_count >= 4) {
                     continue;
@@ -77,8 +74,6 @@ class answers_api {
             }
 
             return $response;
-        } else {
-            $response['message'] = @$xml_o->message;
         }
         return $response;
     }
@@ -139,35 +134,30 @@ class answers_api {
 
         //perform api request
         $text_response = self::get(
-                        sprintf("%s?%s", self::$standard_host . self::SEARCH_PATH, http_build_query($params)),
-                        $headers
+            sprintf("%s?%s", self::$standard_host . self::SEARCH_PATH, http_build_query($params)),
+            $headers
         );
 
-        //load xml response
-        $xml_o = @simplexml_load_string($text_response);
+        $response = self::parse_response($text_response);
 
-        if (!is_object($xml_o)) {
+        if ($response == false) {
             return "Error retrieving document";
         }
 
         //'message' attribute is only present when error occurs
-        if (property_exists($xml_o, 'message')) {
-            return $xml_o->message;
+        if (array_key_exists('message', $response)) {
+            return $response['message'];
         }
 
-        $results = (array) $xml_o->results;
-
-        $result_list = $results['result'];
+        $result_list = $response['results']['result'];
 
         $response = array();
 
         if (is_array($result_list) && count($result_list) > 0) {
             foreach ($result_list as $key => $value) {
-                $result_list[$key] = (array) $value;
-
-                $cats = (array) $result_list[$key]['categories'];
+                $cats       = $result_list[$key]['categories'];
                 $attributes = $result_list[$key]['@attributes'];
-                $title = $result_list[$key]['title'];
+                $title      = $result_list[$key]['title'];
 
                 if (!empty($title)) {
                     if (count($cats) > 0) {
@@ -241,9 +231,9 @@ class answers_api {
             $headers
         );
 
-        $response = simplexml_load_string($response);
+        $response = self::parse_response($response);
         //if response has message attribute, then it was an error
-        if (property_exists($response, "message")) {
+        if (array_key_exists('message', $response)) {
             return false;
         }
         return true;
@@ -267,16 +257,16 @@ class answers_api {
             $headers
         );
 
-        $xml_o = @simplexml_load_string($document);
+        $response = self::parse_response($document);
 
-        if (!is_object($xml_o)) {
+        if ($response == false) {
             return "Error retrieving document";
         }
 
-        if (property_exists('message', $xml_o)) {
-            return "Could not create question";
+        if (array_key_exists('message', $response)) {
+            return sprintf("Could not create question: %s", $response['message']);
         } else {
-            return (array) $xml_o;
+            return $response;
         }
     }
 
@@ -297,12 +287,12 @@ class answers_api {
             $headers
         );
 
-        $xml_o = @simplexml_load_string($response);
+        $response = self::parse_response($response);
 
-        if (property_exists($xml_o, 'message')) {
-            return "Could not create question";
+        if (array_key_exists('message', $response)) {
+            return sprintf("Could not create question: %s", $response['message']);
         } else {
-            return (array) $xml_o;
+            return $response;
         }
     }
 
@@ -334,16 +324,31 @@ class answers_api {
      * 	Returns commonly used headers
      */
     private static function get_common_headers() {
-        return array(
+        $headers = array(
             "X-Answers-apikey:" . self::$key,
             "X-Answers-user-ip:" . self::$ip
+        );
+        return $headers;
+    }
+
+    /**
+     * Parse return XML into JSON object
+     * @param xml <string> XML Response from API
+     * @return array
+     */
+    private static function parse_response($xml)
+    {
+        $xml_object = @simplexml_load_string($xml);
+        return json_decode(
+            json_encode($xml_object, LIBXML_NOCDATA),
+            true
         );
     }
 
     /**
      * 	Perform a DELETE request
      */
-    public static function remove($url, $headers) {
+    private static function remove($url, $headers) {
         return self::rest('DELETE', $url, NULL, $headers);
     }
 
