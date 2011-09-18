@@ -30,6 +30,7 @@ class answers_api {
     const AUTH_PATH = '/api/login';
     const ASK_PATH = '/api/docs/wiki';
     const ANSWER_PATH = '/api/docs/wiki';
+    const DOC_PATH = '/api/docs';
 
     /**
      * 	Categorizes a question
@@ -188,6 +189,28 @@ class answers_api {
     }
 
     /**
+     * Retrieve a document
+     * @param title <string> URL to document
+     * @param app <string> ref or wiki (default)
+     * @return Array
+     */
+    public static function document($title, $app='wiki')
+    {
+        $title = str_replace(' ', '_', $title);
+        $url = self::$standard_host . self::DOC_PATH . "/$app/$title?content-format=text/x-answers-html";
+        $headers = self::get_common_headers();
+
+        $text_response = self::get(
+            $url,
+            $headers
+        );
+
+        $response = self::parse_response($text_response);
+
+        return $response;
+    }
+    
+    /**
      * 	Sets the API host and ensures required headers are set
      */
     private static function initialize() {
@@ -278,11 +301,15 @@ class answers_api {
      * 	@return error message or array response
      */
     public static function answer($question_url, $answer) {
-        $answer = '<content href="' . $question_url . '/answer/content"><![CDATA[' . $answer . ']]></content>';
+        $answer = sprintf(
+            '<content href="%s/answer/content"><![CDATA[%s]]></content>',
+            $question_url,
+            $answer
+        );
         $headers = self::get_common_headers();
 
         $response = self::put(
-            self::$standard_host . self::ASK_PATH,
+            self::$standard_host . self::ANSWER_PATH,
             $answer,
             $headers
         );
