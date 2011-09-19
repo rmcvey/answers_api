@@ -255,6 +255,10 @@ class answers_api {
         );
 
         $response = self::parse_response($response);
+
+        if($response == false){
+            return false;
+        }
         //if response has message attribute, then it was an error
         if (array_key_exists('message', $response)) {
             return false;
@@ -283,7 +287,7 @@ class answers_api {
         $response = self::parse_response($document);
 
         if ($response == false) {
-            return "Error retrieving document";
+            return "Empty response from API";
         }
 
         if (array_key_exists('message', $response)) {
@@ -298,18 +302,20 @@ class answers_api {
      *
      * 	@param question_url <string> URL of document
      * 	@param answer <string> Text answer to question
+     *  @param id <string> document id
      * 	@return error message or array response
      */
-    public static function answer($question_url, $answer) {
+    public static function answer($question_url, $answer, $id) {
         $answer = sprintf(
             '<content href="%s/answer/content"><![CDATA[%s]]></content>',
             $question_url,
             $answer
         );
         $headers = self::get_common_headers();
-
+        $headers[]= "If-Match: $id";
+        
         $response = self::put(
-            self::$standard_host . self::ANSWER_PATH,
+            sprintf("%s/answer/content", $question_url),
             $answer,
             $headers
         );
@@ -421,6 +427,10 @@ class answers_api {
 
         if (self::$debug === true) {
             curl_setopt($ch, CURLOPT_VERBOSE, TRUE);
+            
+            if(!empty($vars)){
+              echo $vars;
+            }
         }
 
         switch ($method) {
@@ -434,8 +444,8 @@ class answers_api {
             case 'PUT':
                 curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
                 if (!empty($vars)) {
-                    curl_setopt($ch, array(
-                        CURLOPT_POSTFILEDS => $vars
+                    curl_setopt_array($ch, array(
+                        CURLOPT_POSTFIELDS => $vars
                     ));
                 }
                 break;
