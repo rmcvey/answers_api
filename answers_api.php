@@ -21,6 +21,10 @@ class answers_api {
      * 	@param staging <bool> Uses production servers if false
      */
     public static $staging = true;
+    /**
+     *  @param authorized <bool> Whether or not user has authenticated
+     */
+    private static $authorized = false;
     // Answers.com hosts
     private static $standard_host;
     private static $secure_host;
@@ -257,13 +261,15 @@ class answers_api {
         $response = self::parse_response($response);
 
         if($response == false){
-            return false;
+            self::$authorized = false;
         }
         //if response has message attribute, then it was an error
         if (array_key_exists('message', $response)) {
-            return false;
+            self::$authorized = false;
         }
-        return true;
+        self::$authorized = true;
+        
+        return self::$authorized;
     }
 
     /**
@@ -273,6 +279,9 @@ class answers_api {
      * 	@return error message or array response
      */
     public static function ask($question) {
+        if(self::$authorized == false){
+            throw new Exception("Auth required prior to calling ask");
+        }
         self::initialize();
 
         $headers = self::get_common_headers();
@@ -306,6 +315,9 @@ class answers_api {
      * 	@return error message or array response
      */
     public static function answer($question_url, $answer, $id) {
+        if(self::$authorized == false){
+            throw new Exception("Auth required prior to calling answer");
+        }
         $answer = sprintf(
             '<content href="%s/answer/content"><![CDATA[%s]]></content>',
             $question_url,
@@ -336,6 +348,9 @@ class answers_api {
      * 	@param true on success, message on error
      */
     public static function delete($id, $url) {
+        if(self::$authorized == false){
+            throw new Exception("Auth required prior to calling ask");
+        }
         if (empty($id) || empty($url)) {
             throw new Exception("ID and URL are required to delete a document");
         }
