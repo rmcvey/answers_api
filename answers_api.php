@@ -273,6 +273,20 @@ class answers_api {
         return self::$authorized;
     }
 
+    public static function get_api_doc($url)
+    {
+        $headers = self::get_common_headers();
+
+        $text_response = self::get(
+            $url,
+            $headers
+        );
+
+        $response = self::parse_response($text_response);
+
+        return $response;
+    }
+
     /**
      * Get info on user
      * @param username <string> Answers.com user name
@@ -417,7 +431,7 @@ class answers_api {
     {
         $xml_object = @simplexml_load_string($xml);
         return json_decode(
-            json_encode($xml_object, LIBXML_NOCDATA),
+            json_encode($xml_object),
             true
         );
     }
