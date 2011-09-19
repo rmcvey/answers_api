@@ -35,6 +35,7 @@ class answers_api {
     const ASK_PATH = '/api/docs/wiki';
     const ANSWER_PATH = '/api/docs/wiki';
     const DOC_PATH = '/api/docs';
+    const USER_PATH = '/api/users';
 
     /**
      * 	Categorizes a question
@@ -270,6 +271,34 @@ class answers_api {
         self::$authorized = true;
         
         return self::$authorized;
+    }
+
+    /**
+     * Get info on user
+     * @param username <string> Answers.com user name
+     */
+    public static function user_info($username)
+    {
+        self::initialize();
+
+        $headers = self::get_common_headers();
+
+        $document = self::get(
+            self::$standard_host . self::USER_PATH . "/" . str_replace(' ', '_', $username),
+            $headers
+        );
+
+        $response = self::parse_response($document);
+
+        if ($response == false) {
+            return "Empty response from API";
+        }
+
+        if (array_key_exists('message', $response)) {
+            return sprintf("Could not create question: %s", $response['message']);
+        } else {
+            return $response;
+        }
     }
 
     /**
