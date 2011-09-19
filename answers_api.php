@@ -264,7 +264,7 @@ class answers_api {
             self::$authorized = false;
         }
         //if response has message attribute, then it was an error
-        if (array_key_exists('message', $response)) {
+        if (is_array($response) && array_key_exists('message', $response)) {
             self::$authorized = false;
         }
         self::$authorized = true;
