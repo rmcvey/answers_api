@@ -68,20 +68,12 @@ class answers_api {
             return "Unable to categorize the requested text";
         }
 
-        $cat_count = 1;
-        $response = array(
-            'question' => $params['q'],
-            'category1' => "",
-            'category2' => "",
-            'category3' => "",
-        );
-
         $categories = $result['categories']['category'];
 
         if (is_array($categories)) {
             foreach ($categories as $key => $category) {
                 $title = $category['title'];
-                $response["category$cat_count"] = $title;
+                $response["categories"][] = $title;
                 $cat_count++;
                 if ($cat_count >= 4) {
                     continue;
