@@ -267,9 +267,10 @@ class answers_api {
         //if response has message attribute, then it was an error
         if (is_array($response) && array_key_exists('message', $response)) {
             self::$authorized = false;
+        }else{
+            self::$authorized = true;
         }
-        self::$authorized = true;
-        
+
         return self::$authorized;
     }
 
@@ -429,11 +430,21 @@ class answers_api {
      */
     private static function parse_response($xml)
     {
-        $xml_object = @simplexml_load_string($xml, null, LIBXML_NOCDATA);
-        return json_decode(
-            json_encode($xml_object),
-            true
-        );
+        if (!$xml) {
+            return false;
+        }
+        
+        libxml_use_internal_errors(true);
+        $xml_object = simplexml_load_string($xml, null, LIBXML_NOCDATA);
+        if (is_object($xml_object)) {
+            $parsed = json_decode(json_encode($xml_object),true);
+            return $parsed;
+        }
+        foreach (libxml_get_errors() as $err) {
+            error_log(__METHOD__ . ": XML error: {$err->message}");
+        }
+        libxml_clear_errors();
+        return false;
     }
 
     /**
