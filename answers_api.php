@@ -429,7 +429,7 @@ class answers_api {
      */
     private static function parse_response($xml)
     {
-        $xml_object = @simplexml_load_string($xml);
+        $xml_object = @simplexml_load_string($xml, null, LIBXML_NOCDATA);
         return json_decode(
             json_encode($xml_object),
             true
