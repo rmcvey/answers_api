@@ -321,8 +321,6 @@ class answers_api {
 
         $response = self::parse_response($response);
 
-        print_r($response);
-
         //if response is false or has message attribute, then it was an error
         if ($response == false || 
                (is_array($response) && array_key_exists('message', $response))) {
