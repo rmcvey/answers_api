@@ -69,11 +69,12 @@ class answers_api {
         }
 
         $categories = $result['categories']['category'];
+        $response = array();
 
         if (is_array($categories)) {
             foreach ($categories as $key => $category) {
                 $title = $category['title'];
-                $response["categories"][] = $title;
+                $response[] = $title;
                 $cat_count++;
                 if ($cat_count >= 4) {
                     continue;
