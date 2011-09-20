@@ -39,8 +39,8 @@ class answers_api {
 
     /**
      * 	Categorizes a question
-     * 	@param question String question
-     * 	@return Array (question, category1, category2, category3, message), message is non-empty on error
+     * 	@param question <string> question
+     * 	@return <array> (question, category1, category2, category3) or String error message
      */
     public static function categorize($question) {
         self::initialize();
@@ -56,7 +56,17 @@ class answers_api {
             $headers
         );
 
-        $result = self::parse_response($text_response);
+        if(($result = self::parse_response($text_response)) === false){
+            return "Error retrieving document";
+        }
+
+        if(array_key_exists('message', $result)){
+            return $result['message'];
+        }
+
+        if(empty($result['categories'])){
+            return "Unable to categorize the requested text";
+        }
 
         $cat_count = 1;
         $response = array(
@@ -64,7 +74,6 @@ class answers_api {
             'category1' => "",
             'category2' => "",
             'category3' => "",
-            'message' => ''
         );
 
         $categories = $result['categories']['category'];
