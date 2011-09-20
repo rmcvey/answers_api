@@ -32,6 +32,7 @@ class answers_api {
     const CATEGORIZE_PATH = '/api/category-suggest';
     const SEARCH_PATH = '/api/search';
     const AUTH_PATH = '/api/login';
+    const EXTERNAL_AUTH_PATH = '/api/external-login';
     const ASK_PATH = '/api/docs/wiki';
     const ANSWER_PATH = '/api/docs/wiki';
     const DOC_PATH = '/api/docs';
@@ -274,6 +275,65 @@ class answers_api {
         return self::$authorized;
     }
 
+    /**
+     *   Authenticate against the Answers API with Facebook login
+     *   Creates Answers user from Facebook info if hasn't already been created
+     *   @param fb_user <associative array, keys: first_name, last_name, email, id> 
+     *      Facebook User
+     *   @return boolean true on success, false on failure
+     */
+    public static function auth_with_facebook($fb_user){
+        self::initialize();
+
+        // bail if already authorized with Answers creds
+        if (self::$authorized){
+           return false;
+        }
+
+        $doctmpl =
+           "<?xml version='1.0'?>
+           <user>
+            <name>%s</name>
+            <email>%s</email>
+            <facebookuser>%s</facebookuser>
+            <network>facebook</network>
+            <first-name>%s</first-name>
+            <last-name>%s</last-name>
+            <nickname></nickname>
+            <profile-url></profile-url>
+            <photo-url></photo-url>
+          </user>";
+
+        $doc = sprintf($doctmpl,
+                  sprintf("%s %s", $fb_user['first_name'], $fb_user['last_name']),
+                  $fb_user['email'],
+                  $fb_user['id'],
+                  $fb_user['first_name'],
+                  $fb_user['last_name']);
+
+        $headers = self::get_common_headers();
+
+        $response = self::put(
+            self::$secure_host . self::EXTERNAL_AUTH_PATH,
+            $doc,
+            $headers
+        );
+
+        $response = self::parse_response($response);
+
+        print_r($response);
+
+        //if response is false or has message attribute, then it was an error
+        if ($response == false || 
+               (is_array($response) && array_key_exists('message', $response))) {
+            self::$authorized = false;
+        }else{
+            self::$authorized = true;
+        }
+
+        return self::$authorized;
+    }
+
     public static function get_api_doc($url)
     {
         $headers = self::get_common_headers();
@@ -389,7 +449,7 @@ class answers_api {
      * 	Delete answers.com document
      * 	@param id <string> ID of Document
      * 	@param url <string> API URL of document
-     * 	@param true on success, message on error
+     * 	@return true on success, message on error
      */
     public static function delete($id, $url) {
         if(self::$authorized == false){
