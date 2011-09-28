@@ -28,6 +28,7 @@ class answers_api {
     // Answers.com hosts
     private static $standard_host;
     private static $secure_host;
+    private static $user = "anonymous";
 
     const CATEGORIZE_PATH = '/api/category-suggest';
     const SEARCH_PATH = '/api/search';
@@ -204,16 +205,26 @@ class answers_api {
      */
     public static function document($title, $app='wiki')
     {
+        self::initialize();
         $title = str_replace(' ', '_', $title);
         $url = self::$standard_host . self::DOC_PATH . "/$app/$title?content-format=text/x-answers-html";
         $headers = self::get_common_headers();
 
+        // if the title is passed as the full path to the document, use the path
+        if(strpos($title, "http://") !== false){
+            $parts = parse_url($title);
+            $url = self::$standard_host . $parts['path'] . '?content-format=text/x-answers-html';
+        }
+        
         $text_response = self::get(
             $url,
             $headers
         );
 
+        $etag = self::get_headers($url, 'ETag');
+
         $response = self::parse_response($text_response);
+        $response['ETag'] = $etag;
 
         return $response;
     }
@@ -251,7 +262,8 @@ class answers_api {
      */
     public static function auth($uname, $pass) {
         self::initialize();
-
+        self::$user = $uname;
+        
         $auth_token = base64_encode("$uname:$pass");
 
         $headers = self::get_common_headers();
@@ -416,12 +428,18 @@ class answers_api {
      *  @param id <string> document id
      * 	@return error message or array response
      */
-    public static function answer($question_url, $answer, $id) {
+    public static function answer($question_url, $answer, $id=NULL) {
         if(self::$authorized == false){
             throw new Exception("Auth required prior to calling answer");
         }
+        if(is_null($id)){
+            throw new Exception("ID of document required");
+        }
+
         $answer = sprintf(
-            '<content href="%s/answer/content"><![CDATA[%s]]></content>',
+            '<content href="%s">
+                <![CDATA[%s]]>
+             </content>',
             $question_url,
             $answer
         );
@@ -429,15 +447,17 @@ class answers_api {
         $headers[]= "If-Match: $id";
         
         $response = self::put(
-            sprintf("%s/answer/content", $question_url),
+            sprintf("%s", $question_url),
             $answer,
             $headers
         );
 
+        echo $response;
+        
         $response = self::parse_response($response);
 
         if (array_key_exists('message', $response)) {
-            return sprintf("Could not create question: %s", $response['message']);
+            return sprintf("Could not create answer: %s", $response['message']);
         } else {
             return $response;
         }
@@ -491,7 +511,7 @@ class answers_api {
         if (!$xml) {
             return false;
         }
-        
+
         libxml_use_internal_errors(true);
         $xml_object = simplexml_load_string($xml, null, LIBXML_NOCDATA);
         if (is_object($xml_object)) {
@@ -533,6 +553,44 @@ class answers_api {
         return self::rest('POST', $url, $vars, $headers);
     }
 
+    private static function get_headers($url, $search_key = NULL) {
+        $headers = array();
+        $url = parse_url($url);
+        $host = isset($url['host']) ? $url['host'] : '';
+        $port = isset($url['port']) ? $url['port'] : 80;
+        $path = (isset($url['path']) ? $url['path'] : '/') . (isset($url['query']) ? '?' . $url['query'] : '');
+        $fp = fsockopen($host, $port, $errno, $errstr, 3);
+        if ($fp)
+        {
+            $hdr = "GET $path HTTP/1.1\r\n";
+            $hdr .= "Host: $host \r\n";
+            $hdr .= "X-Answers-apikey:" . self::$key . "\r\n";
+            $hdr .= "X-Answers-user-ip: " . self::$ip ." \r\n";
+            $hdr .= "Connection: Close\r\n\r\n";
+            fwrite($fp, $hdr);
+            while (!feof($fp) && $line = trim(fgets($fp, 1024)))
+            {
+                if ($line == "\r\n") break;
+                list($key, $val) = explode(': ', $line, 2);
+                if ($val) {
+                    $headers[$key] = $val;
+                }
+                else {
+                    $headers[] = $key;
+                }
+            }
+            fclose($fp);
+            if(!is_null($search_key)){
+                if(array_key_exists($search_key, $headers)){
+                    return $headers[$search_key];
+                }
+                return NULL;
+            }
+            return $headers;
+        }
+        return false;
+    }
+
     // curl stuff
     private static function rest($method, $url, $vars, $headers) {
         $ch = curl_init($url);
@@ -541,6 +599,11 @@ class answers_api {
             curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         }
 
+        $cookie_jar = sprintf('/tmp/cookie_%s_%s.txt',
+            base64_encode(self::$user),
+            date('Ymd', strtotime('Now'))
+        );
+
         curl_setopt_array($ch, array(
             CURLOPT_SSL_VERIFYPEER => 0,
             CURLOPT_USERAGENT => "Mozilla/5.0 (Macintosh; U; Intel Mac OS X; en-US; rv:1.8.1.7) Gecko/20070914 Firefox/2.0.0.7",
@@ -548,10 +611,11 @@ class answers_api {
             CURLOPT_RETURNTRANSFER => 1,
             CURLOPT_CONNECTTIMEOUT => 2,
             CURLOPT_TIMEOUT => 2,
-            CURLOPT_COOKIEJAR => '/tmp/cookie.txt',
-            CURLOPT_COOKIEFILE => '/tmp/cookie.txt'
+            CURLOPT_COOKIEJAR => $cookie_jar,
+            CURLOPT_COOKIEFILE => $cookie_jar,
+            CURLOPT_NOBODY => "true"
         ));
-
+        
         if (self::$debug === true) {
             curl_setopt($ch, CURLOPT_VERBOSE, TRUE);
             
