@@ -436,22 +436,22 @@ class answers_api {
         if(self::$authorized == false){
             throw new Exception("Auth required prior to calling answer");
         }
-        if(is_null($id)){
+        if(is_null($etag)){
             throw new Exception("ID of document required");
         }
 
         $answer = sprintf(
-            '<content href="%s">
+            '<content href="'.self::$standard_host.self::ANSWER_PATH.'">
                 <![CDATA[%s]]>
              </content>',
-            $question_url,
+            $question_title,
             $answer
         );
         $headers = self::get_common_headers();
         $headers[]= "If-Match: $etag";
-        
+
         $response = self::put(
-            self::$standard_host . sprintf(self::ANSWER_PATH, $question_url),
+            self::$standard_host . sprintf(self::ANSWER_PATH, $question_title),
             $answer,
             $headers
         );
@@ -553,8 +553,8 @@ class answers_api {
         $return = array();
         $rows = explode("\n", $headers);
         foreach($rows as $row) {
-            list($key, $value) = explode(':', $row, 2);
-            if(!empty($value)) {
+            if(strpos($row, ':') !== false) {
+                list($key, $value) = explode(':', $row, 2);
                 $return[trim($key)] = trim($value);
             }
         }
