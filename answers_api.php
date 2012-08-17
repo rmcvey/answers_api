@@ -18,9 +18,9 @@ class answers_api {
      */
     public static $debug = false;
     /**
-     * 	@param staging <bool> Uses production servers if false
+     * 	@param env <string> Uses production servers if anything other than "local" or "staging"
      */
-    public static $staging = true;
+    public static $env = 'prod';
     /**
      *  @param authorized <bool> Whether or not user has authenticated
      */
@@ -235,9 +235,12 @@ class answers_api {
     private static function initialize() {
         self::check_required_headers();
 
-        if (self::$staging === true) {
+        if (self::$env === 'staging') {
             self::$standard_host = 'http://en.stage.api.answers.com';
             self::$secure_host = 'https://en.stage.api.answers.com';
+        } else if (self::$env = 'local') {
+            self::$standard_host = 'http://ward-local.wiki.answers.com';
+            self::$secure_host = 'http://ward-local.wiki.answers.com';
         } else {
             self::$standard_host = 'http://en.api.answers.com';
             self::$secure_host = 'https://en.api.answers.com';
@@ -404,7 +407,8 @@ class answers_api {
         $document = self::post(
             self::$standard_host . self::ASK_PATH,
             $data,
-            $headers
+            $headers,
+            true
         );
 
         $response = self::parse_response($document);
@@ -510,45 +514,82 @@ class answers_api {
             return false;
         }
 
+        if(strpos($xml, '<?xml') !== 0) {
+            list($headers, $xml) = explode("<?xml", $xml);
+            $parsed_headers = self::parse_response_headers($headers);
+            $xml = '<?xml'.$xml;
+        }
+
         libxml_use_internal_errors(true);
         $xml_object = simplexml_load_string($xml, null, LIBXML_NOCDATA);
         if (is_object($xml_object)) {
             $parsed = json_decode(json_encode($xml_object),true);
+        } else {
+            foreach (libxml_get_errors() as $err) {
+                error_log(__METHOD__ . ": XML error: {$err->message}");
+            }
+            libxml_clear_errors();
+        }
+
+        if(!empty($parsed)) {
+            if(!empty($parsed_headers)) $parsed['headers'] = $parsed_headers;
             return $parsed;
         }
-        foreach (libxml_get_errors() as $err) {
-            error_log(__METHOD__ . ": XML error: {$err->message}");
+
+        return false;
+    }
+
+    /**
+     * Parse return HTTP headers into an array
+     * @param headers <string> HTTP Response Headers from API
+     * @return array
+     */
+    private static function parse_response_headers($headers)
+    {
+        if (!$headers) {
+            return false;
         }
-        libxml_clear_errors();
+
+        $return = array();
+        $rows = explode("\n", $headers);
+        foreach($rows as $row) {
+            list($key, $value) = explode(':', $row, 2);
+            if(!empty($value)) {
+                $return[trim($key)] = trim($value);
+            }
+        }
+
+        if(!empty($return)) return $return;
+
         return false;
     }
 
     /**
      * 	Perform a DELETE request
      */
-    private static function remove($url, $headers) {
-        return self::rest('DELETE', $url, NULL, $headers);
+    private static function remove($url, $headers = array(), $return_headers = false) {
+        return self::rest('DELETE', $url, NULL, $headers, $return_headers);
     }
 
     /**
      * 	Perform GET request
      */
-    private static function get($url, $headers = array()) {
-        return self::rest('GET', $url, NULL, $headers);
+    private static function get($url, $headers = array(), $return_headers = false) {
+        return self::rest('GET', $url, NULL, $headers, $return_headers);
     }
 
     /**
      * 	Perform PUT request
      */
-    private static function put($url, $vars, $headers = array()) {
-        return self::rest('PUT', $url, $vars, $headers);
+    private static function put($url, $vars, $headers = array(), $return_headers = false) {
+        return self::rest('PUT', $url, $vars, $headers, $return_headers);
     }
 
     /**
      * 	Perform POST request
      */
-    private static function post($url, $vars, $headers = array()) {
-        return self::rest('POST', $url, $vars, $headers);
+    private static function post($url, $vars, $headers = array(), $return_headers = false) {
+        return self::rest('POST', $url, $vars, $headers, $return_headers);
     }
 
     private static function get_headers($url, $search_key = NULL) {
@@ -590,7 +631,7 @@ class answers_api {
     }
 
     // curl stuff
-    private static function rest($method, $url, $vars, $headers) {
+    private static function rest($method, $url, $vars, $headers, $return_headers = false) {
         $ch = curl_init($url);
 
         if (!empty($headers)) {
@@ -614,6 +655,10 @@ class answers_api {
             CURLOPT_NOBODY => "true"
         ));
         
+        if($return_headers === true) {
+            curl_setopt($ch, CURLOPT_HEADER, 1);
+        }
+
         if (self::$debug === true) {
             curl_setopt($ch, CURLOPT_VERBOSE, TRUE);
             
@@ -645,13 +690,12 @@ class answers_api {
 
         $data = curl_exec($ch);
 
-        if ($data) {
-            return $data;
+        if (empty($data)) {
+            $data = curl_error($ch);
         }
 
-        $error = curl_error($ch);
         curl_close($ch);
-        return $error;
+        return $data;
     }
 
 }
