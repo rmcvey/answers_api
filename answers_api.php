@@ -35,7 +35,7 @@ class answers_api {
     const AUTH_PATH = '/api/login';
     const EXTERNAL_AUTH_PATH = '/api/external-login';
     const ASK_PATH = '/api/docs/wiki';
-    const ANSWER_PATH = '/api/docs/wiki';
+    const ANSWER_PATH = '/api/docs/wiki/%s/answer/content';
     const DOC_PATH = '/api/docs';
     const USER_PATH = '/api/users';
 
@@ -425,10 +425,10 @@ class answers_api {
      *
      * 	@param question_url <string> URL of document
      * 	@param answer <string> Text answer to question
-     *  @param id <string> document id
+     *  @param etag <string> document etag
      * 	@return error message or array response
      */
-    public static function answer($question_url, $answer, $id=NULL) {
+    public static function answer($question_title, $answer, $etag=NULL) {
         if(self::$authorized == false){
             throw new Exception("Auth required prior to calling answer");
         }
@@ -444,15 +444,13 @@ class answers_api {
             $answer
         );
         $headers = self::get_common_headers();
-        $headers[]= "If-Match: $id";
+        $headers[]= "If-Match: $etag";
         
         $response = self::put(
-            sprintf("%s", $question_url),
+            self::$standard_host . sprintf(self::ANSWER_PATH, $question_url),
             $answer,
             $headers
         );
-
-        echo $response;
         
         $response = self::parse_response($response);
 
@@ -633,12 +631,13 @@ class answers_api {
                 break;
             case 'DELETE':
             case 'PUT':
-                curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
-                if (!empty($vars)) {
-                    curl_setopt_array($ch, array(
-                        CURLOPT_POSTFIELDS => $vars
-                    ));
-                }
+                $putData = tmpfile();
+                fwrite($putData, $vars);
+                fseek($putData, 0);
+                curl_setopt($ch, CURLOPT_PUT, true);
+                curl_setopt($ch, CURLOPT_INFILE, $putData);
+                curl_setopt($ch, CURLOPT_INFILESIZE, strlen($vars));
+                #curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
                 break;
             default:
                 break;
