@@ -238,7 +238,7 @@ class answers_api {
         if (self::$env === 'staging') {
             self::$standard_host = 'http://en.stage.api.answers.com';
             self::$secure_host = 'https://en.stage.api.answers.com';
-        } else if (self::$env = 'local') {
+        } else if (self::$env === 'local') {
             self::$standard_host = 'http://ward-local.wiki.answers.com';
             self::$secure_host = 'http://ward-local.wiki.answers.com';
         } else {
@@ -455,7 +455,7 @@ class answers_api {
             $answer,
             $headers
         );
-        
+
         $response = self::parse_response($response);
 
         if (array_key_exists('message', $response)) {
