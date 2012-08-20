@@ -3,7 +3,7 @@ require_once 'answers_api.php';
 
 // set api key and client IP address
 answers_api::$debug = true;
-answers_api::$env = 'local';
+#answers_api::$env = 'local';
 answers_api::$key = '##YOUR_KEY##';
 answers_api::$ip  = (!empty($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '127.0.0.1');
 // turn on curl debugging by switching this to true
@@ -42,6 +42,5 @@ print_r($paged_response);
 $cat_response = answers_api::categorize('The bacon narwhals at midnight');
 
 print_r($cat_response);
-
 
 ?>
