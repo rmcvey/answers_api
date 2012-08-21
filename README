@@ -8,3 +8,5 @@ Implemented methods:
     - *delete(id, url): delete a question
 
 * Requires elevated permissions
+
+http://developers.answers.com/documentation
