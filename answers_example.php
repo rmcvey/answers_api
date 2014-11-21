@@ -9,7 +9,7 @@ answers_api::$ip  = (!empty($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] :
 // turn on curl debugging by switching this to true
 answers_api::$debug = false;
 
-answers_api::auth('qaadmin', 'gurunet');
+answers_api::auth('user', 'pwd');
 $ask_response = answers_api::ask("What's up with ".mt_rand(1000, 9999)."?");
 
 print_r($ask_response);
